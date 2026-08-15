@@ -1,0 +1,57 @@
+name: Trading Signal
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+jobs:
+  signal:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run trading signal
+        env:
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+        run: |
+          python - <<'PY'
+          import os
+          import json
+          import urllib.parse
+          import urllib.request
+
+          api_key = os.environ["TWELVE_DATA_API_KEY"]
+
+          params = urllib.parse.urlencode({
+              "symbol": "BTC/USD",
+              "interval": "15min",
+              "outputsize": 50,
+              "apikey": api_key
+          })
+
+          url = "https://api.twelvedata.com/time_series?" + params
+
+          with urllib.request.urlopen(url) as response:
+              data = json.load(response)
+
+          if "values" not in data:
+              print("API error:", data)
+              raise SystemExit(1)
+
+          values = data["values"]
+          closes = [float(x["close"]) for x in values]
+
+          fast = sum(closes[:9]) / 9
+          slow = sum(closes[:21]) / 21
+
+          if fast > slow:
+              signal = "BUY"
+          elif fast < slow:
+              signal = "SELL"
+          else:
+              signal = "WAIT"
+
+          print("Trading signal:", signal)
+          print("Fast average:", fast)
+          print("Slow average:", slow)
+          PY
