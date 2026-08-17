@@ -52,6 +52,17 @@ jobs:
               signal = "WAIT"
 
           print("Trading signal:", signal)
+                    with open("/tmp/trading_signal.txt", "w") as f:
+              f.write(signal)
           print("Fast average:", fast)
           print("Slow average:", slow)
           PY
+                - name: Send Telegram signal
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          message="Trading Signal: $(cat /tmp/trading_signal.txt)"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            --data-urlencode text="$message"
